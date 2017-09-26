@@ -7,7 +7,6 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.widget.FrameLayout;
 
@@ -21,8 +20,8 @@ public class ShadowView extends FrameLayout {
     private int mOriginWidth;
 
     private int mDx;
-    private int mDy;
-    private int mRadius;
+    private int mDy; // y轴偏移
+    private int mRadius; // 模糊程度
 
     private int mTopShadow;
     private int mLeftShadow;
@@ -36,6 +35,11 @@ public class ShadowView extends FrameLayout {
     private boolean isMeasure = true;
 
     private MarginLayoutParams mParams;
+
+
+    private boolean mCenterX = true; // 是否基于x轴居中
+    private boolean mCenterY = false; // 是否基于y轴居中
+
 
     public ShadowView(Context context, @Nullable AttributeSet attrs) {
         this(context, attrs, 0);
@@ -59,26 +63,13 @@ public class ShadowView extends FrameLayout {
         } else {
             setMeasuredDimension(mOriginWidth + mLeftShadow + mRightShadow, mOriginHeight + mTopShadow + mBottomShadow);
             // 计算margin
-
-            MarginLayoutParams params = (MarginLayoutParams) getLayoutParams();
-
-            params.setMargins(mParams.leftMargin + (mRightShadow - mLeftShadow) / 2, mParams.topMargin - mTopShadow, mParams.rightMargin, mParams.bottomMargin - mBottomShadow);
-
+//            Log.i("info", "height:" + getMeasuredHeight() + "width:" + getMeasuredWidth());
         }
-        Log.i("info", "onMeasure");
-//        measure(widthMeasureSpec,heightMeasureSpec);
-
-        Log.i("info", "mOriginHeight:" + getMeasuredHeight() + "mOriginWidth:" + getMeasuredWidth());
-//        setMeasuredDimension(mOriginWidth + mLeftShadow + mRightShadow, mOriginHeight + mTopShadow + mBottomShadow);
-
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        Log.i("info", "onSizeChanged:" + "w:" + w + "h:" + h + "oldw:" + oldw + "oldh:" + oldh);
-//        mOriginWidth = w;
-//        mOriginHeight = h;
         if (isMeasure) {
             mOriginHeight = h;
             mOriginWidth = w;
@@ -90,45 +81,69 @@ public class ShadowView extends FrameLayout {
     }
 
     public void setShadow(int dx, int dy, int radius) {
+        if (mParams == null) {
+            return;
+        }
         mDx = dx;
         mDy = dy;
         mRadius = radius;
-
-        if (Math.abs(dy) > radius) {
-            if (dy > 0) {
-                mTopShadow = 0;
-                mBottomShadow = radius + dy;
-            } else {
-                mTopShadow = radius - dy;
-                mBottomShadow = 0;
-            }
-        } else {
-            mTopShadow = radius - dy;
-            mBottomShadow = radius + dy;
-        }
-        if (Math.abs(dx) > radius) {
-            if (dx > 0) {
-                mLeftShadow = 0;
-                mRightShadow = radius + dx;
-            } else {
-                mLeftShadow = radius - dx;
-                mRightShadow = 0;
-            }
-        } else {
-            mLeftShadow = radius - dx;
-            mRightShadow = radius + dx;
-        }
-
+        calculateShadow();
+        resetMargin();
         setPadding(mLeftShadow, mTopShadow, mRightShadow, mBottomShadow);
-
         invalidate();
-
-        Log.i("info", "setShadow");
     }
 
     public void setRadius(int radius) {
         mRectRadius = radius;
         invalidate();
+    }
+
+    public void calculateShadow() {
+        if (Math.abs(mDy) > mRadius) {
+            if (mDy > 0) {
+                mTopShadow = 0;
+                mBottomShadow = mRadius + mDy;
+            } else {
+                mTopShadow = mRadius - mDy;
+                mBottomShadow = 0;
+            }
+        } else {
+            mTopShadow = mRadius - mDy;
+            mBottomShadow = mRadius + mDy;
+        }
+
+        if (mCenterX) {
+            mLeftShadow = mRightShadow = Math.abs(mDx) + mRadius;
+        } else if (Math.abs(mDx) > mRadius) {
+            if (mDx > 0) {
+                mLeftShadow = 0;
+                mRightShadow = mRadius + mDx;
+            } else {
+                mLeftShadow = mRadius - mDx;
+                mRightShadow = 0;
+            }
+        } else {
+            mLeftShadow = mRadius - mDx;
+            mRightShadow = mRadius + mDx;
+        }
+    }
+
+    public void resetMargin() {
+        int leftMargin = mParams.leftMargin;
+        int rightMargin = mParams.rightMargin;
+        int topMargin = mParams.topMargin;
+        int bottomMargin = mParams.bottomMargin;
+
+        MarginLayoutParams params = (MarginLayoutParams) getLayoutParams();
+        if (!mCenterX) {
+            leftMargin -= mLeftShadow;
+            rightMargin -= mRightShadow;
+        }
+        if (!mCenterY) {
+            topMargin -= mTopShadow;
+            bottomMargin -= mBottomShadow;
+        }
+        params.setMargins(leftMargin, topMargin, rightMargin, bottomMargin);
     }
 
     @Override
